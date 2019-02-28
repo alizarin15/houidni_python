@@ -1,0 +1,109 @@
+
+import os, sys , shutil, datetime
+#init data
+typeParmDict = {'alembic' : ('fileName',), 
+                'alembicxform' : ('fileName',),
+                'alembicarchive' : ('fileName',),
+                'filecache' : ('file',),
+                'file' : ('file',),
+                'arnold::image' : ('filename',),
+                'texture::2.0' : ('map',),
+                'materialbuilder' : ('spectrumname',),
+                'subnet' : ('alembic', 'abc_static'),
+                'Tr_Prop_Asset' : ('asset_folder','source_file'),
+                'hlight::2.0' : ('light_texture',),
+                'arnold_light' : ('ar_light_color_texture',)
+                }
+
+brzOutPath = '/mnt/projects/barza/outRender/'
+brzProject = '/mnt/projects/barza/'
+
+parent = hou.node('/')
+counter = 0
+
+#save init scene
+scene_name = hou.hipFile.basename()
+hou.hipFile.save(file_name = brzOutPath + 'scenes/' + scene_name.replace('.hip','') + '/' + scene_name, save_to_recent_files = True)
+print('HIP saved to out')
+
+#loop block
+#iterate by al nodes and check is parent not HDA
+for node in parent.allSubChildren(top_down = False) :
+    if node.parent().isEditable() == 1 and node.parent().type().name() != 'cam': 
+        #iterate by dictionary and check is iterationg node == one of types in dict
+        for node_type, getParms in typeParmDict.iteritems():
+            for node_parm in getParms:
+                if node.type().name() == node_type and node_parm in str(node.parms()):
+                    counter += 1
+                                        
+                    changeParm = node.parm(node_parm)
+                    keyFramesCount = len(changeParm.keyframes())
+                    if keyFramesCount > 0 :
+                        changeParm.deleteAllKeyframes()
+                        node.setColor(hou.Color((1.0,0,0)))
+                        print(' I HAVE DELETED FROM ' + changeParm.path() + ' '  + str(keyFramesCount) + ' keyframes')
+                
+                    original_path = changeParm.eval()
+                    original_dir = original_path.rsplit('/',1)[0]
+                    unexpanded_path = changeParm.unexpandedString()
+                    if '.$F'  in unexpanded_path:
+                        #file_name = original_path.rsplit('/',1)[-1]
+                        file_mask = original_path.rsplit('/',1)[-1].split('.')[0]
+                        file_name = file_mask + '.' + '.'.join([s  for s  in unexpanded_path.rsplit('/',1)[-1].split('.')[1:] if s.find('/')])
+                        
+                    elif '.<udim>' in unexpanded_path:
+                        file_name = original_path.rsplit('/',1)[-1]
+                        file_mask = file_name.rsplit('.<udim>',1)[0]
+                    elif '%(UDIM)d' in unexpanded_path:
+                        file_name = original_path.rsplit('/',1)[-1]
+                        file_mask = file_name.rsplit('%(UDIM)d',1)[-1]
+                    else: 
+                        file_name = original_path.rsplit('/',1)[-1]
+                        file_mask = file_name
+                           
+                    print(original_path)
+                    print(unexpanded_path)
+                    print(file_name)
+                    print(file_mask)
+                    
+                    
+                    #if in original path no  "outRender"  folder  go to next steps
+                    if 'outRender' not in original_path  and len(original_path) > 0  and os.path.isdir(original_dir):
+                        copy_path = original_dir.replace(brzProject, brzOutPath + 'data/')
+                        
+                        #check copy folder existence
+                        if os.path.exists(copy_path) == 0 :
+                            os.makedirs(copy_path)
+                            print( copy_path + ' dir is created')
+                        else:
+                            print(copy_path + ' already exist')
+                        
+                        #for each file in folder do copy script
+                        for fileName in [f for f in os.listdir(original_dir) if os.path.isfile(os.path.join(original_dir, f))]:
+                            if  file_mask in fileName :
+                                original_file = original_dir + '/' + fileName
+                                copy_file = copy_path + '/' + fileName
+                                
+                                #if file dose not exist in outRENDER folder make copy
+                                if os.path.isfile(copy_file) == 0:
+                                     shutil.copyfile(original_file,copy_file)
+                                     print( fileName + ' is copied at ' + str( datetime.datetime.now().hour) + ' : ' + str( datetime.datetime.now().minute))
+                                else:
+                                    print(fileName + 'already exist')
+                                
+                        #correct path                        
+                        changeParm.set('/storage/outRender/' + copy_path.replace(brzOutPath,'') + '/' + file_name)
+                        print(node.name() + ' path corrected ' + node_parm )   
+                    
+                    else:
+                        print('ALARM on ' + node.path() + ' there is no existing DIR!!!')
+                            
+                            
+#save corrected
+scene_path = hou.hipFile.path()
+hou.hipFile.save(file_name = scene_path , save_to_recent_files = True)
+print('updated HIP is saved')
+
+#message
+hou.ui.displayMessage(str(counter) + ' magic is done')        
+                        
