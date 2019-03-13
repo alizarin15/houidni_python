@@ -1,0 +1,15 @@
+############################################################################################
+BUTTON RUN FUNCTION FROM PARM
+def btnClick (passedData):
+    n =  hou.node("/obj/pythonscript1")
+    if n:
+        p = n.parm("btn_example")
+        print dir(p)
+        print p.name()
+        print p.description() # This is the button caption.
+
+
+Here is the callback code. Remember to switch from Hscript to Python.
+
+exec(hou.node("/obj/pythonscript1").parm('python').eval());btnClick("") 
+############################################################################################
