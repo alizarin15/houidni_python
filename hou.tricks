@@ -13,3 +13,39 @@ Here is the callback code. Remember to switch from Hscript to Python.
 
 exec(hou.node("/obj/pythonscript1").parm('python').eval());btnClick("") 
 ############################################################################################
+
+############################################################################################
+create python HDA and add some function in script module
+
+in tool or else  you  can access any function from this type of asset if its installed 
+hou.nodeType(hou.objNodeTypeCategory(), "myasset").hdaModule().my_function()
+*nodeType(hou.objNodeTypeCategory(), "myasset") make instance of some HDA
+* hou.objNodeTypeCategory asks to look on OBJ level
+http://www.sidefx.com/docs/houdini/hom/hou/nodeType_.html
+############################################################################################
+
+############################################################################################
+import toolutils
+
+#make instance of current viewer
+viewer = toolutils().sceneViewer()
+#activate current node state (paint or transform)
+viewer.enterCurrentNodeState()
+
+#make list of selected objects from viewport or geometry elements
+#in any case first STRING argument asks what to write in viewport secon argument is a list of allowable  geometry types
+#*** hou.geometryType.* return instance of some geometry type module
+selection = viewer.selectObjects('text', object_types = [?can i])
+selection = viewer.selectGeometry('text', geometry_types = [hou.geometryType.Points,vhttp://www.sidefx.com/docs/houdini/hom/hou/geometryType.html])
+
+#create node
+blast = toolutils.genericTool(kwargs,'blast','blast_for_painting')
+paint = blast.createOutputNode('paint','paint_pts') *just connect to parent
+
+#setselected  you can deselect all other selected
+node.setSelected(True, clear_all_selected=True)
+#hou.clearAllSelected()
+#hou.Node.setSelected(paint, True)
+
+
+############################################################################################
