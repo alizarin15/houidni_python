@@ -1,0 +1,115 @@
+#build init
+shieldShop = hou.node('/obj/Shield_SHOP/Shield_geo')
+shieldRop = hou.node('/obj/SHIELD_ROP')
+shf_a = shieldRop.node('./SHIELD_A1')
+shf_b = shieldRop.node('./SHIELD_B1')
+
+if shieldShop == None or shieldRop == None:
+    hou.ui.displayMessage('BAD INPUT SCENE!!!')
+else:
+    run = hou.ui.displayMessage("select function to do", buttons=('add annihilator passes to render', 'clean annihilator passes','cancel'), default_choice=0, close_choice=2, title= "annihilator passes control script")
+
+    if run == 0 and shieldShop != None:
+        #build annihilator subnetwork
+        if shieldShop.node('./ANNIHILATORS_OUT') != None:
+            shieldShop.node('./ANNIHILATORS_OUT').destroy()
+           
+        anhlSubnet = shieldShop.createNode('subnet', 'ANNIHILATORS_OUT')
+        surfGlobsPos = shieldShop.node('./transform1').position()
+        offset = hou.Vector2((4.0,-4.0))
+        anhlSubnet.setPosition(surfGlobsPos + offset )
+        anhlSubnet.setInput(0,shieldShop.node('./transform1'),0)
+        anhlSubnet.setColor(hou.Color(1,0,0))
+        anhlSubnet.node('./suboutput1').destroy()
+      
+            
+        
+        nodes = dict((i.name(),i) for i in hou.node('/obj').children())
+        selected = hou.ui.selectFromTree( [i.name() for i in hou.node('/obj').children()], picked=(), exclusive=True, message='please select node with annihilator points', title="select", clear_on_cancel=True)[0]
+        for i in  nodes[selected].children():
+            if i.isDisplayFlagSet() ==  1:
+                node = i
+                if nodes[selected].node('./annihilators') == None:
+                    cache  = node.createOutputNode('filecache','annihilators')
+                    cache.parm('execute').pressButton()
+                else:
+                    cache = nodes[selected].node('./annihilators')
+                break
+                
+        geo = node.geometry()
+        points = geo.points()
+        if points != None:
+            for index, point in enumerate(points):
+                pass_name = 'anhl_distance_' + str(index)
+                anhlSubinput = anhlSubnet.node('./subinput1')
+                currentAnhl = anhlSubnet.createNode('subnet',"ANHL_" + str(index))
+                offset = hou.Vector2((2.0,-2.0 * index))
+                currentAnhl.setPosition(anhlSubinput.position() + offset )
+                currentAnhl.setInput(0,anhlSubinput,0)
+                currentAnhl.node('./suboutput1').destroy()
+                
+                crAnhlSubInput = currentAnhl.node('./subinput1')
+                
+                constant =  currentAnhl.createNode('constant','anhlPtNum')
+                constant.setPosition(crAnhlSubInput.position() + hou.Vector2(0,-4))
+                constant.parm('consttype').set('int')
+                constant.parm('intdef').set(index)
+                
+                ptimport = currentAnhl.createNode('importpoint','getAnhlPos')
+                ptimport.setPosition(crAnhlSubInput.position() + hou.Vector2(4,-2))
+                ptimport.setInput(3,constant,0)
+                path = '`chs("' + cache.path() + '/file")`'
+                ptimport.parm('file').set(path)
+                
+                dist = currentAnhl.createNode('distance','build_distance')
+                dist.setPosition(crAnhlSubInput.position() + hou.Vector2(8,0))
+                dist.setInput(0,crAnhlSubInput,0)
+                dist.setInput(1,ptimport,0)
+                                
+                bind = currentAnhl.createNode('bind','export_distance')
+                bind.setPosition(crAnhlSubInput.position() + hou.Vector2(12,0))
+                bind.parm('parmname').set(pass_name)
+                bind.parm('exportparm').set(1)
+                bind.setInput(0,dist,0)
+                
+                parmsA =  [i.eval() for i in shf_a.parms()]
+                if pass_name not in parmsA:
+                    origin_a = shf_a.parm('vm_numaux').eval()
+                    shf_a.parm('vm_numaux').set(origin_a + 1)
+                    shf_a.parm('vm_variable_plane' + str(origin_a + 1)).set(pass_name)
+                    shf_a.parm('vm_vextype_plane' + str(origin_a + 1)).set('float')
+                    shf_a.parm('vm_channel_plane' + str(origin_a + 1)).set(pass_name)
+              
+                parmsB =  [i.eval() for i in shf_b.parms()]
+                if pass_name not in parmsB:
+                    origin_b = shf_b.parm('vm_numaux').eval()
+                    shf_b.parm('vm_numaux').set(origin_b + 1)
+                    shf_b.parm('vm_variable_plane' + str(origin_b + 1)).set(pass_name)
+                    shf_b.parm('vm_vextype_plane' + str(origin_b + 1)).set('float')
+                    shf_b.parm('vm_channel_plane' + str(origin_b + 1)).set(pass_name)
+                    
+                    
+                    
+    elif run == 1:
+        nodes = dict((i.name(),i) for i in hou.node('/obj').children())
+        selected = hou.ui.selectFromTree( [i.name() for i in hou.node('/obj').children()], picked=(), exclusive=True, message='please select node with annihilator points', title="select", clear_on_cancel=True)[0]
+        for i in  nodes[selected].children():
+            if i.isDisplayFlagSet() ==  1:
+                node = i
+                if nodes[selected].node('./annihilators') == None:
+                    cache  = node.createOutputNode('filecache','annihilators')
+                    cache.parm('execute').pressButton()
+                else:
+                    cache = nodes[selected].node('./annihilators')
+                break
+            
+        geo = node.geometry()
+        points = geo.points()
+        
+        if points != None:
+            for index, point in enumerate(points):
+                print('test')
+        
+        
+            
+        
