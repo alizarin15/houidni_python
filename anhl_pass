@@ -7,9 +7,11 @@ shf_b = shieldRop.node('./SHIELD_B1')
 if shieldShop == None or shieldRop == None:
     hou.ui.displayMessage('BAD INPUT SCENE!!!')
 else:
-    run = hou.ui.displayMessage("select function to do", buttons=('add annihilator passes to render', 'clean annihilator passes','cancel'), default_choice=0, close_choice=2, title= "annihilator passes control script")
+    run = hou.ui.displayMessage("select function to do", buttons=('add annihilator passes to render', 
+                                'clean annihilator passes','cancel'), default_choice=0, close_choice=2, 
+                                title= "annihilator passes control script")
 
-    if run == 0 and shieldShop != None:
+    if run == 0 :
         #build annihilator subnetwork
         if shieldShop.node('./ANNIHILATORS_OUT') != None:
             shieldShop.node('./ANNIHILATORS_OUT').destroy()
@@ -21,11 +23,12 @@ else:
         anhlSubnet.setInput(0,shieldShop.node('./transform1'),0)
         anhlSubnet.setColor(hou.Color(1,0,0))
         anhlSubnet.node('./suboutput1').destroy()
-      
-            
         
         nodes = dict((i.name(),i) for i in hou.node('/obj').children())
-        selected = hou.ui.selectFromTree( [i.name() for i in hou.node('/obj').children()], picked=(), exclusive=True, message='please select node with annihilator points', title="select", clear_on_cancel=True)[0]
+        selected = hou.ui.selectFromTree( [i.name() for i in hou.node('/obj').children()],
+                                         picked=(), exclusive=True, message='please select node with annihilator points',
+                                         title="select", clear_on_cancel=True)[0]
+
         for i in  nodes[selected].children():
             if i.isDisplayFlagSet() ==  1:
                 node = i
@@ -34,6 +37,8 @@ else:
                     cache.parm('execute').pressButton()
                 else:
                     cache = nodes[selected].node('./annihilators')
+                    if hou.ui.displayMessage("Do you want to recache annihilators???", buttons=("YES" , "NO"), default_choice=1,close_choice=1, title='Update annihilator cache') == 0:
+                        cache.parm('execute').pressButton()
                 break
                 
         geo = node.geometry()
@@ -91,25 +96,22 @@ else:
                     
                     
     elif run == 1:
-        nodes = dict((i.name(),i) for i in hou.node('/obj').children())
-        selected = hou.ui.selectFromTree( [i.name() for i in hou.node('/obj').children()], picked=(), exclusive=True, message='please select node with annihilator points', title="select", clear_on_cancel=True)[0]
-        for i in  nodes[selected].children():
-            if i.isDisplayFlagSet() ==  1:
-                node = i
-                if nodes[selected].node('./annihilators') == None:
-                    cache  = node.createOutputNode('filecache','annihilators')
-                    cache.parm('execute').pressButton()
-                else:
-                    cache = nodes[selected].node('./annihilators')
-                break
+        if shieldShop.node('./ANNIHILATORS_OUT') != None:
+            shieldShop.node('./ANNIHILATORS_OUT').destroy()
+
+        rops = [shf_a,shf_b]
+        for rop in rops:
+            indexToClean = []
+            extraImgParm = rop.parm('vm_numaux')
+            for parm in extraImgParm.multiParmInstances():
+                if 'vm_variable_plane' in parm.name():
+                    if 'anhl_distance' in parm.eval():
+                        plane_num = int(parm.name().replace('vm_variable_plane',''))
+                        indexToClean.append(plane_num)
             
-        geo = node.geometry()
-        points = geo.points()
-        
-        if points != None:
-            for index, point in enumerate(points):
-                print('test')
-        
-        
+            indexToClean.reverse()
+            for i in indexToClean:
+                extraImgParm.removeMultiParmInstance(i-1)
+                
+            hou.ui.displayMessage("You have deleted all anihhilatro extra image planes")
             
-        
