@@ -1,8 +1,8 @@
 #build init
 shieldShop = hou.node('/obj/Shield_SHOP/Shield_geo')
 shieldRop = hou.node('/obj/SHIELD_ROP')
-shf_a = shieldRop.node('./SHIELD_A1')
-shf_b = shieldRop.node('./SHIELD_B1')
+shf_a = shieldRop.node('./SHIELD_A')
+shf_b = shieldRop.node('./SHIELD_B')
 
 if shieldShop == None or shieldRop == None:
     hou.ui.displayMessage('BAD INPUT SCENE!!!')
@@ -22,7 +22,7 @@ else:
         anhlSubnet.setPosition(surfGlobsPos + offset )
         anhlSubnet.setInput(0,shieldShop.node('./transform1'),0)
         anhlSubnet.setColor(hou.Color(1,0,0))
-        anhlSubnet.node('./suboutput1').destroy()
+        #anhlSubnet.node('./suboutput1').destroy()
         
         nodes = dict((i.name(),i) for i in hou.node('/obj').children())
         selected = hou.ui.selectFromTree( [i.name() for i in hou.node('/obj').children()],
@@ -35,10 +35,12 @@ else:
                 if nodes[selected].node('./annihilators') == None:
                     cache  = node.createOutputNode('filecache','annihilators')
                     cache.parm('execute').pressButton()
+                    cache.parm('reload').pressButton()
                 else:
                     cache = nodes[selected].node('./annihilators')
                     if hou.ui.displayMessage("Do you want to recache annihilators???", buttons=("YES" , "NO"), default_choice=1,close_choice=1, title='Update annihilator cache') == 0:
                         cache.parm('execute').pressButton()
+                        cache.parm('reload').pressButton()
                 break
                 
         geo = node.geometry()
@@ -51,7 +53,7 @@ else:
                 offset = hou.Vector2((2.0,-2.0 * index))
                 currentAnhl.setPosition(anhlSubinput.position() + offset )
                 currentAnhl.setInput(0,anhlSubinput,0)
-                currentAnhl.node('./suboutput1').destroy()
+                #currentAnhl.node('./suboutput1').destroy()
                 
                 crAnhlSubInput = currentAnhl.node('./subinput1')
                 
@@ -70,12 +72,19 @@ else:
                 dist.setPosition(crAnhlSubInput.position() + hou.Vector2(8,0))
                 dist.setInput(0,crAnhlSubInput,0)
                 dist.setInput(1,ptimport,0)
+                
+                anhlOut = currentAnhl.node('./suboutput1')
+                anhlOut.setPosition(crAnhlSubInput.position() + hou.Vector2(12,0))
+                anhlOut.setInput(1,dist,0)
+                
+                anhlOutAll = anhlSubnet.node('./suboutput1')
+                anhlOutAll.setInput(1 + index,currentAnhl,0)
                                 
-                bind = currentAnhl.createNode('bind','export_distance')
-                bind.setPosition(crAnhlSubInput.position() + hou.Vector2(12,0))
+                bind = shieldShop.createNode('bind','export_distance')
+                bind.setPosition(anhlSubnet.position() + hou.Vector2(4,-3 * index))
                 bind.parm('parmname').set(pass_name)
                 bind.parm('exportparm').set(1)
-                bind.setInput(0,dist,0)
+                bind.setInput(0,anhlSubnet,index)
                 
                 parmsA =  [i.eval() for i in shf_a.parms()]
                 if pass_name not in parmsA:
@@ -98,7 +107,9 @@ else:
     elif run == 1:
         if shieldShop.node('./ANNIHILATORS_OUT') != None:
             shieldShop.node('./ANNIHILATORS_OUT').destroy()
-
+        for shopNode in [child for child in shieldShop.children() if "export_distance" in child.name() and child.type().name() == 'bind']:
+            shopNode.destroy()
+            
         rops = [shf_a,shf_b]
         for rop in rops:
             indexToClean = []
